@@ -1,0 +1,60 @@
+# ── Flutter / Dart ───────────────────────────────────────────────────────────
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins
+mobile_app/.flutter-plugins-dependencies
+mobile_app/.pub-cache/
+mobile_app/.pub/
+mobile_app/build/
+mobile_app/android/.gradle/
+mobile_app/android/local.properties
+mobile_app/android/key.properties
+mobile_app/android/app/google-services.json
+mobile_app/ios/.symlinks/
+mobile_app/ios/Flutter/flutter_export_environment.sh
+mobile_app/ios/Flutter/Generated.xcconfig
+mobile_app/ios/Pods/
+mobile_app/ios/Runner.xcworkspace/xcshareddata/
+mobile_app/web/
+mobile_app/.metadata
+
+# ── Node.js ──────────────────────────────────────────────────────────────────
+node_modules/
+services/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.production
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+*.egg
+
+# ── Secrets / Keys ───────────────────────────────────────────────────────────
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+serviceAccountKey.json
+supabase/.env
+
+# ── OS & Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+
+# ── Build artifacts ──────────────────────────────────────────────────────────
+*.apk
+*.ipa
+*.aab

@@ -1,0 +1,11 @@
+{
+  "users": {
+    "mock_user@example.com": {
+      "email": "mock_user@example.com",
+      "is_premium": true
+    }
+  },
+  "personas": {
+    "mock_user@example.com": []
+  }
+}

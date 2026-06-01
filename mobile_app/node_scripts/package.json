@@ -1,0 +1,8 @@
+{
+  "name": "node-image-tools",
+  "version": "1.0.0",
+  "main": "remove_bg.js",
+  "dependencies": {
+    "jimp": "^0.16.13"
+  }
+}
