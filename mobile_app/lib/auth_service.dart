@@ -50,6 +50,8 @@ class AuthService {
         ? googleClientId!
         : '413982991748-ntgb5dfnkfo23h6mhsvparv23jjdh5td.apps.googleusercontent.com';
 
+    debugPrint("Google Sign-In: using client ID (should be Web Client ID): $clientId");
+
     // On Android: use serverClientId (clientId is ignored by the plugin)
     // On Web/iOS: use clientId
     if (!kIsWeb && Platform.isAndroid) {
