@@ -10,7 +10,7 @@ class AuthService {
   static String currentUserName = 'Guest Parent';
   
   // Loaded from environment or set dynamically
-  static String? googleClientId = const String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '413982991748-g585l9nefab5a4rbo2rscdhmnnaif5r0.apps.googleusercontent.com');
+  static String? googleClientId = const String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '413982991748-cvbvedvf892ogii10d2u2qslc3uq7eg2.apps.googleusercontent.com');
 
   static Future<void> loadSession() async {
     try {
@@ -48,7 +48,7 @@ class AuthService {
   static GoogleSignIn _buildGoogleSignIn() {
     final clientId = (googleClientId != null && googleClientId!.isNotEmpty)
         ? googleClientId!
-        : '413982991748-ntgb5dfnkfo23h6mhsvparv23jjdh5td.apps.googleusercontent.com';
+        : '413982991748-cvbvedvf892ogii10d2u2qslc3uq7eg2.apps.googleusercontent.com';
 
     debugPrint("Google Sign-In: using client ID (should be Web Client ID): $clientId");
 
