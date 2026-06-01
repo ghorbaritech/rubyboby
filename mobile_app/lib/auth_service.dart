@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -43,31 +45,48 @@ class AuthService {
     } catch (_) {}
   }
 
-  static Future<GoogleSignInAccount?> signInWithGoogle() async {
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: (googleClientId != null && googleClientId!.isNotEmpty) ? googleClientId : null,
+  static GoogleSignIn _buildGoogleSignIn() {
+    final clientId = (googleClientId != null && googleClientId!.isNotEmpty)
+        ? googleClientId!
+        : '413982991748-ntgb5dfnkfo23h6mhsvparv23jjdh5td.apps.googleusercontent.com';
+
+    // On Android: use serverClientId (clientId is ignored by the plugin)
+    // On Web/iOS: use clientId
+    if (!kIsWeb && Platform.isAndroid) {
+      return GoogleSignIn(
+        serverClientId: clientId,
         scopes: ['email', 'profile'],
       );
+    } else {
+      return GoogleSignIn(
+        clientId: clientId,
+        scopes: ['email', 'profile'],
+      );
+    }
+  }
+
+  static Future<GoogleSignInAccount?> signInWithGoogle() async {
+    try {
+      final GoogleSignIn googleSignIn = _buildGoogleSignIn();
       final account = await googleSignIn.signIn();
       if (account != null) {
         final auth = await account.authentication;
         final idToken = auth.idToken;
         final accessToken = auth.accessToken;
-        
+
         if (idToken != null) {
-          // Authenticate with Supabase
+          // Authenticate with Supabase using the Google ID token
           final response = await Supabase.instance.client.auth.signInWithIdToken(
             provider: OAuthProvider.google,
             idToken: idToken,
             accessToken: accessToken,
           );
-          
+
           final email = response.user?.email ?? account.email;
           final name = response.user?.userMetadata?['full_name'] ?? account.displayName;
           await saveSession(email, name);
         } else {
-          // Fallback if idToken is null (mock simulator)
+          // Fallback: no idToken (e.g. web simulator without proper setup)
           await saveSession(account.email, account.displayName);
         }
       }
@@ -85,13 +104,12 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('user_email');
       await prefs.remove('user_name');
-      
+
       // Sign out of Supabase
       await Supabase.instance.client.auth.signOut();
-      
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: (googleClientId != null && googleClientId!.isNotEmpty) ? googleClientId : null,
-      );
+
+      // Sign out of Google
+      final GoogleSignIn googleSignIn = _buildGoogleSignIn();
       await googleSignIn.signOut();
     } catch (_) {}
   }

@@ -44,6 +44,7 @@ dist/
 google-services.json
 GoogleService-Info.plist
 serviceAccountKey.json
+client_secret_*.json
 supabase/.env
 
 # ── OS & Editor ──────────────────────────────────────────────────────────────
