@@ -4,6 +4,7 @@ import 'ai_service.dart';
 import 'persona_state.dart';
 import 'persona_profile_screen.dart';
 import 'auth_service.dart';
+import 'analytics_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ParentDashboard extends StatefulWidget {
@@ -355,11 +356,30 @@ class _AnalyticsDashboardViewState extends State<AnalyticsDashboardView> {
           .from('analytics_metrics')
           .select()
           .eq('user_email', AuthService.currentUserEmail);
-      if (mounted) {
-        setState(() {
-          _supabaseAnalytics = response;
-          _loadingAnalytics = false;
-        });
+          
+      if (response.isEmpty && AuthService.currentUserEmail != 'mock_user@example.com') {
+        // Initialize user analytics in DB with baseline values
+        await AnalyticsService.initializeUserAnalyticsIfEmpty(AuthService.currentUserEmail);
+        
+        // Re-fetch from DB
+        final List<dynamic> reFetched = await Supabase.instance.client
+            .from('analytics_metrics')
+            .select()
+            .eq('user_email', AuthService.currentUserEmail);
+            
+        if (mounted) {
+          setState(() {
+            _supabaseAnalytics = reFetched;
+            _loadingAnalytics = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _supabaseAnalytics = response;
+            _loadingAnalytics = false;
+          });
+        }
       }
     } catch (e) {
       print('Error loading analytics from Supabase: $e');
@@ -561,10 +581,15 @@ class _AnalyticsDashboardViewState extends State<AnalyticsDashboardView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title and Switch toggle
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Title and Switch toggle (wrapped in a Wrap for responsiveness)
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   'Activity Analytics',
@@ -593,6 +618,7 @@ class _AnalyticsDashboardViewState extends State<AnalyticsDashboardView> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _toggleButton(
                     label: 'Weekly',

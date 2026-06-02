@@ -7,6 +7,7 @@ import 'stt_service.dart';
 import 'ai_service.dart';
 import 'custom_avatar.dart';
 import 'lip_sync_mouth.dart';
+import 'analytics_service.dart';
 
 // ─── Persona definition ──────────────────────────────────────────────────────
 
@@ -128,6 +129,11 @@ class _TalkingScreenState extends State<TalkingScreen>
   late AnimationController _bounceController;
   late Animation<double> _bounceAnim;
 
+  // Session tracking metrics
+  late DateTime _sessionStartTime;
+  final Set<String> _uniqueWordsUsed = {};
+  int _messagesSent = 0;
+
   PersonaDef? get _persona => kDefaultPersonas[widget.personaId];
 
   String get _displayName =>
@@ -245,6 +251,7 @@ class _TalkingScreenState extends State<TalkingScreen>
   @override
   void initState() {
     super.initState();
+    _sessionStartTime = DateTime.now();
     _waveController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600))
       ..repeat(reverse: true);
@@ -276,6 +283,17 @@ class _TalkingScreenState extends State<TalkingScreen>
   }
 
   void _processUserInput(String userText) async {
+    _messagesSent++;
+    
+    // Extract and track unique vocabulary words (words > 3 characters)
+    final wordsList = userText.toLowerCase().split(RegExp(r'\s+'));
+    for (final w in wordsList) {
+      final clean = w.replaceAll(RegExp(r'[^\w]'), '');
+      if (clean.length > 3) {
+        _uniqueWordsUsed.add(clean);
+      }
+    }
+
     setState(() {
       _message = '🤔 Thinking...';
       _isListening = false;
@@ -362,6 +380,23 @@ class _TalkingScreenState extends State<TalkingScreen>
     _bounceController.dispose();
     _textController.dispose();
     VoiceService.stop();
+
+    // Save session analytics in the background
+    final durationSeconds = DateTime.now().difference(_sessionStartTime).inSeconds;
+    final durationMinutes = durationSeconds / 60.0;
+
+    // Only record if it was an active session (e.g. lasted at least 5 seconds and had user messages)
+    if (durationSeconds >= 5 && _messagesSent > 0) {
+      final vocabGrowth = max(1, _uniqueWordsUsed.length ~/ 3);
+      AnalyticsService.recordSession(
+        personaId: widget.personaId,
+        personaRole: widget.role,
+        durationMinutes: durationMinutes,
+        messagesCount: _messagesSent,
+        newWordsCount: vocabGrowth,
+      );
+    }
+
     super.dispose();
   }
 
