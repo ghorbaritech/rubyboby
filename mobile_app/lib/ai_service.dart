@@ -3,7 +3,18 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AiService {
-  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  static String? _dynamicApiKey;
+
+  static void setApiKey(String key) {
+    _dynamicApiKey = key;
+  }
+
+  static String get apiKey {
+    if (_dynamicApiKey != null && _dynamicApiKey!.isNotEmpty) {
+      return _dynamicApiKey!;
+    }
+    return const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  }
 
   static Future<String> generateResponse({
     required String userText,
@@ -12,13 +23,14 @@ class AiService {
     required String traits,
     required String language,
   }) async {
-    if (_apiKey.isEmpty) {
-      print("Error: GEMINI_API_KEY is not defined. Please run/build the app with --dart-define=GEMINI_API_KEY=your_api_key");
+    final key = apiKey;
+    if (key.isEmpty) {
+      print("Error: GEMINI_API_KEY is not defined. Please configure it in Parent Settings or build the app with --dart-define=GEMINI_API_KEY=your_api_key");
       return "I'm having a little trouble thinking right now. Let's try again in a minute!";
     }
 
     final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$_apiKey');
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$key');
 
     final systemInstruction = "You are $personaName, a $age-year-old character/friend. "
         "Your personality is: $traits. "

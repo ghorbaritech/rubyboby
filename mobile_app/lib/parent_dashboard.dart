@@ -15,6 +15,22 @@ class ParentDashboard extends StatefulWidget {
 }
 
 class _ParentDashboardState extends State<ParentDashboard> {
+  final TextEditingController _apiKeyController = TextEditingController();
+  bool _obscureApiKey = true;
+  bool _savingApiKey = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _apiKeyController.text = AiService.apiKey;
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    super.dispose();
+  }
+
   Widget _buildParentProfileHeader() {
     final email = AuthService.currentUserEmail;
     final isGoogle = email.contains('@gmail.com') || email != 'mock_user@example.com';
@@ -150,6 +166,10 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
             // Subscription Status Card
             _buildSubscriptionCard(context),
+            const SizedBox(height: 20),
+
+            // AI Config Settings Card
+            _buildApiKeySettingsCard(context),
             const SizedBox(height: 30),
 
             // Interactive Analytics Dashboard
@@ -276,6 +296,166 @@ class _ParentDashboardState extends State<ParentDashboard> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
               child: const Text('Upgrade'),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApiKeySettingsCard(BuildContext context) {
+    final email = AuthService.currentUserEmail;
+    final isGuest = email == 'mock_user@example.com';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.vpn_key_rounded, color: Colors.amber, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'AI Config Settings',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isGuest
+                ? 'Sign in to sync your Gemini API Key in the cloud and share it across devices.'
+                : 'Save your Gemini API Key in the cloud backend. Changes take effect instantly without rebuilding the app!',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _apiKeyController,
+                  obscureText: _obscureApiKey,
+                  enabled: !isGuest && !_savingApiKey,
+                  style: const TextStyle(fontSize: 14),
+                  decoration: InputDecoration(
+                    labelText: 'Gemini API Key',
+                    hintText: 'Enter AIzaSy... or AQ.Ab8...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureApiKey ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureApiKey = !_obscureApiKey;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: isGuest || _savingApiKey
+                  ? null
+                  : () async {
+                      final key = _apiKeyController.text.trim();
+                      if (key.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a valid API Key')),
+                        );
+                        return;
+                      }
+
+                      setState(() => _savingApiKey = true);
+                      try {
+                        final existing = await Supabase.instance.client
+                            .from('analytics_metrics')
+                            .select('id')
+                            .eq('user_email', email)
+                            .eq('persona_id', 'config_api_key')
+                            .eq('time_range', 'config')
+                            .maybeSingle();
+
+                        if (existing != null) {
+                          await Supabase.instance.client
+                              .from('analytics_metrics')
+                              .update({'sentiment': key})
+                              .eq('id', existing['id']);
+                        } else {
+                          await Supabase.instance.client
+                              .from('analytics_metrics')
+                              .insert({
+                            'user_email': email,
+                            'persona_id': 'config_api_key',
+                            'time_range': 'config',
+                            'total_minutes': 0.0,
+                            'chats_count': 0,
+                            'vocab_growth': 0,
+                            'avg_engagement': 0.0,
+                            'chart_values': <double>[],
+                            'cognitive_focus': {'science': 0.0, 'social': 0.0, 'language': 0.0, 'logic': 0.0},
+                            'sentiment': key,
+                          });
+                        }
+
+                        AiService.setApiKey(key);
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('API Key saved to cloud backend! Changes active instantly.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error saving API Key: $e'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() => _savingApiKey = false);
+                        }
+                      }
+                    },
+              icon: _savingApiKey
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.cloud_upload_rounded),
+              label: Text(_savingApiKey ? 'Saving...' : 'Save to Cloud'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF6B9D),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
+          ),
         ],
       ),
     );

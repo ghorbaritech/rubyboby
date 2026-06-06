@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'ai_service.dart';
 
 class AuthService {
   static String currentUserEmail = 'mock_user@example.com';
@@ -11,6 +12,29 @@ class AuthService {
   
   // Loaded from environment or set dynamically
   static String? googleClientId = const String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '413982991748-cvbvedvf892ogii10d2u2qslc3uq7eg2.apps.googleusercontent.com');
+
+  static Future<void> syncApiKeyFromSupabase(String email) async {
+    if (email == 'mock_user@example.com' || email.isEmpty) return;
+    try {
+      final response = await Supabase.instance.client
+          .from('analytics_metrics')
+          .select('sentiment')
+          .eq('user_email', email)
+          .eq('persona_id', 'config_api_key')
+          .eq('time_range', 'config')
+          .maybeSingle();
+
+      if (response != null && response['sentiment'] != null) {
+        final key = response['sentiment'] as String;
+        if (key.isNotEmpty) {
+          AiService.setApiKey(key);
+          debugPrint('AuthService: Loaded dynamic Gemini API Key from Supabase configuration.');
+        }
+      }
+    } catch (e) {
+      debugPrint('AuthService: Failed to fetch API key from Supabase: $e');
+    }
+  }
 
   static Future<void> loadSession() async {
     try {
@@ -22,6 +46,9 @@ class AuthService {
         final prefs = await SharedPreferences.getInstance();
         currentUserEmail = prefs.getString('user_email') ?? 'mock_user@example.com';
         currentUserName = prefs.getString('user_name') ?? 'Guest Parent';
+      }
+      if (currentUserEmail != 'mock_user@example.com') {
+        syncApiKeyFromSupabase(currentUserEmail);
       }
     } catch (_) {}
   }
@@ -42,6 +69,9 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_email', email);
       await prefs.setString('user_name', currentUserName);
+      if (email != 'mock_user@example.com') {
+        syncApiKeyFromSupabase(email);
+      }
     } catch (_) {}
   }
 
