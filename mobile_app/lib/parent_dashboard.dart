@@ -3,6 +3,7 @@ import 'subscription_service.dart';
 import 'ai_service.dart';
 import 'persona_state.dart';
 import 'persona_profile_screen.dart';
+import 'persona_fine_tune_screen.dart';
 import 'auth_service.dart';
 import 'analytics_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -198,6 +199,16 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.psychology_rounded, size: 16, color: Colors.deepPurple),
+                        label: const Text('Tune', style: TextStyle(color: Colors.deepPurple)),
+                        onPressed: () async {
+                          final res = await Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => PersonaFineTuneScreen(persona: p)
+                          ));
+                          if (res == true) setState(() {});
+                        },
+                      ),
                       TextButton.icon(
                         icon: const Icon(Icons.edit_rounded, size: 16),
                         label: const Text('Edit'),

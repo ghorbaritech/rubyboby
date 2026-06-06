@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'persona_state.dart';
 import 'voice_service.dart';
 import 'stt_service.dart';
@@ -133,6 +134,36 @@ class _TalkingScreenState extends State<TalkingScreen>
   late DateTime _sessionStartTime;
   final Set<String> _uniqueWordsUsed = {};
   int _messagesSent = 0;
+
+  bool _detectStoryRequest(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('story') || 
+           lower.contains('stories') || 
+           lower.contains('tale') || 
+           lower.contains('গল্প') || 
+           lower.contains('golpo') ||
+           lower.contains('কাহিনী');
+  }
+
+  Future<Map<String, String>?> _fetchStoryForCharacter() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('stories')
+          .select('title, content')
+          .or('persona_id.eq.${widget.personaId},persona_id.eq.All');
+      if (response != null && response is List && response.isNotEmpty) {
+        final randomIdx = Random().nextInt(response.length);
+        final story = response[randomIdx];
+        return {
+          'title': (story['title'] ?? '') as String,
+          'content': (story['content'] ?? '') as String,
+        };
+      }
+    } catch (e) {
+      debugPrint('TalkingScreen: Error fetching stories: $e');
+    }
+    return null;
+  }
 
   PersonaDef? get _persona => kDefaultPersonas[widget.personaId];
 
@@ -308,8 +339,16 @@ class _TalkingScreenState extends State<TalkingScreen>
       personaTraits = custom.traits;
     } catch (_) {}
 
+    String promptText = userText;
+    if (_detectStoryRequest(userText)) {
+      final story = await _fetchStoryForCharacter();
+      if (story != null) {
+        promptText = "The child asked for a story. Please tell the following story from your archive in your unique friendly character voice, keeping it brief (around 2-3 sentences) and engaging. Story title: '${story['title']}'. Story content: ${story['content']}.";
+      }
+    }
+
     final aiResponse = await AiService.generateResponse(
-      userText: userText,
+      userText: promptText,
       personaName: _displayName,
       age: widget.age,
       traits: personaTraits,

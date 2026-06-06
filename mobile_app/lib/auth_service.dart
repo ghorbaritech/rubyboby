@@ -14,6 +14,27 @@ class AuthService {
   static String? googleClientId = const String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '413982991748-cvbvedvf892ogii10d2u2qslc3uq7eg2.apps.googleusercontent.com');
 
   static Future<void> syncApiKeyFromSupabase(String email) async {
+    // 1. Try to fetch the global key from the app_config table (preferred)
+    try {
+      final response = await Supabase.instance.client
+          .from('app_config')
+          .select('value')
+          .eq('key', 'gemini_api_key')
+          .maybeSingle();
+
+      if (response != null && response['value'] != null) {
+        final key = response['value'] as String;
+        if (key.isNotEmpty) {
+          AiService.setApiKey(key);
+          debugPrint('AuthService: Loaded global Gemini API Key from app_config table.');
+          return; // Success, we are done
+        }
+      }
+    } catch (e) {
+      debugPrint('AuthService: Failed to fetch API key from app_config: $e');
+    }
+
+    // 2. Fallback: Try to fetch the user-specific API key from analytics_metrics (legacy parent settings)
     if (email == 'mock_user@example.com' || email.isEmpty) return;
     try {
       final response = await Supabase.instance.client
@@ -28,11 +49,11 @@ class AuthService {
         final key = response['sentiment'] as String;
         if (key.isNotEmpty) {
           AiService.setApiKey(key);
-          debugPrint('AuthService: Loaded dynamic Gemini API Key from Supabase configuration.');
+          debugPrint('AuthService: Loaded dynamic Gemini API Key from user configuration (sentiment field).');
         }
       }
     } catch (e) {
-      debugPrint('AuthService: Failed to fetch API key from Supabase: $e');
+      debugPrint('AuthService: Failed to fetch user-specific API key from Supabase: $e');
     }
   }
 
@@ -47,9 +68,7 @@ class AuthService {
         currentUserEmail = prefs.getString('user_email') ?? 'mock_user@example.com';
         currentUserName = prefs.getString('user_name') ?? 'Guest Parent';
       }
-      if (currentUserEmail != 'mock_user@example.com') {
-        syncApiKeyFromSupabase(currentUserEmail);
-      }
+      await syncApiKeyFromSupabase(currentUserEmail);
     } catch (_) {}
   }
 
